@@ -1,0 +1,28 @@
+#!/bin/sh
+
+CONFIG_FILE="$HOME/.config/heekscnc-sendtomachine"
+
+if [ -f $CONFIG_FILE ]
+then
+  . $CONFIG_FILE
+fi
+
+if [ -z "$TARGET_MACHINE" ]
+then
+   TARGET_MACHINE="cnc@weko"
+fi
+
+NOTIFY_TITLE="HeeksCNC"
+NOTIFY_OPTS_OK="--icon=/usr/share/heekscnc/icons/nccode.png --category=transfer.complete"
+NOTIFY_OPTS_ERR="--icon=/usr/share/heekscnc/icons/noentry.png --category=transfer.error"
+
+echo "$*" | tee --append /tmp/axis-remote.log
+scp $1 $TARGET_MACHINE:~/linuxcnc/nc_files/ 2>/tmp/axis-remote.stderr
+
+if [ $? -eq 0 ]; then
+  notify-send $NOTIFY_OPTS_OK $NOTIFY_TITLE "Fichier <i>'$1'</i> envoyé à <b>$TARGET_MACHINE</b>"
+else
+  SCP_STDERR=$(cat /tmp/axis-remote.stderr)
+  NOTIFY_BODY="Erreur lors de l'envoi du fichier <i>'$1'</i> à <b>$TARGET_MACHINE</b>:\n\n$SCP_STDERR"
+  notify-send $NOTIFY_OPTS_ERR -u critical "$NOTIFY_TITLE" "$NOTIFY_BODY"
+fi
